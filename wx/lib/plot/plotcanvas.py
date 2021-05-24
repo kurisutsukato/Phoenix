@@ -2093,8 +2093,8 @@ class PlotCanvas(wx.Panel):
 
             if self.last_draw is not None:
                 graphics, xAxis, yAxis = self.last_draw
-                yAxis -= dist[1]
-                xAxis -= dist[0]
+                yAxis = yAxis - dist[1]
+                xAxis = xAxis - dist[0]
                 self._Draw(graphics, xAxis, yAxis)
 
     def OnMouseLeftDown(self, event):
@@ -2384,7 +2384,6 @@ class PlotCanvas(wx.Panel):
             if mod != 0:
                 upper = upper - mod + grid
             return lower, upper
-#        elif type(spec) == type(()):
         elif isinstance(spec, tuple):
             lower, upper = spec
             if lower <= upper:

@@ -422,8 +422,9 @@ class PolyLine(PolyPoints):
         dc.SetPen(pen)
         if coord is None:
             if len(self.scaled):  # bugfix for Mac OS X
-                for c1, c2 in zip(self.scaled, self.scaled[1:]):
-                    self._path(dc, c1, c2, drawstyle)
+                self._drawPath(dc, drawstyle)
+                #for c1, c2 in zip(self.scaled, self.scaled[1:]):
+                #    self._path(dc, c1, c2, drawstyle)
         else:
             dc.DrawLines(coord)  # draw legend line
 
@@ -438,48 +439,46 @@ class PolyLine(PolyPoints):
         w = 5 * h
         return (w, h)
 
-    def _path(self, dc, coord1, coord2, drawstyle):
+    def _drawPath(self, dc, drawstyle):
         """
-        Calculates the path from coord1 to coord 2 along X and Y
+        Calculates the path according to the drawstyle
 
         :param dc: The DC to draw on.
         :type dc: :class:`wx.DC`
-        :param coord1: The first coordinate in the coord pair
-        :type coord1: list, length 2: ``[x, y]``
-        :param coord2: The second coordinate in the coord pair
-        :type coord2: list, length 2: ``[x, y]``
         :param drawstyle: The type of connector to use
         :type drawstyle: str
         """
         if drawstyle == 'line':
             # Straight line between points.
-            line = [coord1, coord2]
+            lines = self.scaled
         elif drawstyle == 'steps-pre':
             # Up/down to next Y, then right to next X
-            intermediate = [coord1[0], coord2[1]]
-            line = [coord1, intermediate, coord2]
+            lines = np.empty((self.scaled.shape[0]*2-1,2), dtype=int)
+            lines[0::2] = self.scaled
+            lines[1::2] = np.vstack((self.scaled[:-1,0], self.scaled[1:,1])).T
         elif drawstyle == 'steps-post':
             # Right to next X, then up/down to Y
-            intermediate = [coord2[0], coord1[1]]
-            line = [coord1, intermediate, coord2]
+            lines = np.empty((self.scaled.shape[0]*2-1,2), dtype=int)
+            lines[0::2] = self.scaled
+            lines[1::2] = np.vstack((self.scaled[1:,0], self.scaled[:-1,1])).T
         elif drawstyle == 'steps-mid-x':
             # need 3 lines between points: right -> up/down -> right
-            mid_x = ((coord2[0] - coord1[0]) / 2) + coord1[0]
-            intermediate1 = [mid_x, coord1[1]]
-            intermediate2 = [mid_x, coord2[1]]
-            line = [coord1, intermediate1, intermediate2, coord2]
+            lines = np.empty((self.scaled.shape[0]*3-2,2), dtype=int)
+            lines[0::3] = self.scaled
+            mid_x = np.diff(self.scaled[:,0])/2+self.scaled[:-1,0]
+            lines[1::3] = np.vstack((mid_x, self.scaled[:-1,1])).T
+            lines[2::3] = np.vstack((mid_x, self.scaled[1:,1])).T
         elif drawstyle == 'steps-mid-y':
             # need 3 lines between points: up/down -> right -> up/down
-            mid_y = ((coord2[1] - coord1[1]) / 2) + coord1[1]
-            intermediate1 = [coord1[0], mid_y]
-            intermediate2 = [coord2[0], mid_y]
-            line = [coord1, intermediate1, intermediate2, coord2]
+            lines = np.empty((self.scaled.shape[0]*3-2,2), dtype=int)
+            lines[0::3] = self.scaled
+            mid_y = np.diff(self.scaled[:,1])/2+self.scaled[:-1,1]
+            lines[1::3] = np.vstack((self.scaled[:-1,0], mid_y)).T
+            lines[2::3] = np.vstack((self.scaled[1:,0], mid_y)).T
         else:
             err_txt = "Invalid drawstyle '{}'. Must be one of {}."
             raise ValueError(err_txt.format(drawstyle, self._drawstyles))
-
-        dc.DrawLines(line)
-
+        dc.DrawLines(lines.astype(np.int32))
 
 class PolySpline(PolyLine):
     """
